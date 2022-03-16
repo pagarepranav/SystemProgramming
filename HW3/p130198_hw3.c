@@ -15,6 +15,8 @@ To compile: gcc hw3.c
 */
 char **comm;
 int ind = 0;
+char **files;
+int find = 0;
 
 typedef struct
 {
@@ -23,6 +25,7 @@ typedef struct
     int f_flag;           // is the f flag provided?
     int t_flag;           // is the t flag provided?
     int e_flag;			  // is the e flag provided?
+    int E_flag;			  // is the E flag provided?
     int fileSize;         // s flag value
     char filterTerm[300]; // f flag value
     char fileType[2];     // t flag value
@@ -98,6 +101,10 @@ void myPrinterFunction(char *filePath, char *dirfile, FlagArgs flagArgs, int nes
             printf("\t"); // print a tab for every nesting
         }
         printf("%s\n", line); // print the line after the tabs
+		if(flagArgs.E_flag){
+			files[find] = malloc(sizeof(char)*(strlen(filePath)+1));
+			strcpy(files[find++], filePath);
+		}
     }
 }
 
@@ -139,10 +146,11 @@ int main(int argc, char **argv)
         .s_flag = 0,
         .f_flag = 0,
         .t_flag = 0,
-        .e_flag = 0};
+        .e_flag = 0,
+        .E_flag = 0};
 
     // Parse arguments:
-    while ((opt = getopt(argc, argv, "Ss:f:t:e")) != -1)
+    while ((opt = getopt(argc, argv, "Ss:f:t:Ee")) != -1)
     {
         switch (opt)
         {
@@ -168,6 +176,10 @@ int main(int argc, char **argv)
         case 'e':
             flagArgs.e_flag = 1;               // set the e_flag to a truthy value
             break;
+            
+        case 'E':
+            flagArgs.E_flag = 1;               // set the E_flag to a truthy value
+            break;
         }
     }
     if(flagArgs.e_flag){
@@ -189,6 +201,25 @@ int main(int argc, char **argv)
 			temp = strtok(NULL, " ");
 		}
 	}
+	if(flagArgs.E_flag){
+    	int i = 0;
+		files = malloc(sizeof(char*)*100000);
+		for(i=0;i<100000;i++){
+			files[i]=NULL;
+		}
+		for(i=0;i<argc;i++){
+			if(!strcmp(argv[i], "-E")){
+				break;
+			}
+		}
+		i++;
+		char* temp = strtok(argv[i], " ");
+		while(temp!=NULL){
+			files[find] = malloc(sizeof(char)*50);
+			strcpy(files[find++], temp);
+			temp = strtok(NULL, " ");
+		}
+	}
 
     if (opendir(argv[argc - 1]) == NULL) // check for if a dir is provided
     {
@@ -196,12 +227,36 @@ int main(int argc, char **argv)
         getcwd(defaultdrive, 300);    // get the current working directory (if no directory was provided)
         printf("%s\n", defaultdrive); // prints the top-level dir
         readFileHierarchy(defaultdrive, 0, myPrinterFunction, flagArgs);
+        int i;
+		if(flagArgs.E_flag){
+			pid_t p = fork();
+			if (p == 0){
+				if(execvp(*files, files)==-1){
+					exit(1);
+				}
+			}
+			else{
+				wait(NULL);
+			}
+		}
+		if(flagArgs.e_flag){
+			for(i=0;i<10;i++){
+				free(comm[i]);
+			}
+			free(comm);
+		}
+		if(flagArgs.E_flag){
+			for(i=0;i<100000;i++){
+				free(files[i]);
+			}
+			free(files);
+		}
         return 0;
     }
     printf("%s\n", argv[argc - 1]); // prints the top-level dir
     readFileHierarchy(argv[argc - 1], 0, myPrinterFunction, flagArgs);
-
+	
+	
     return 0;
 }
-
 
